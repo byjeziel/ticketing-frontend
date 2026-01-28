@@ -1,0 +1,17 @@
+.gitignore
+.npmignore
+.openapi-generator-ignore
+api.ts
+base.ts
+common.ts
+configuration.ts
+docs/AppApi.md
+docs/CreateEventDto.md
+docs/CreateProducerDto.md
+docs/EventApi.md
+docs/ProducersApi.md
+docs/ScheduleItemDto.md
+docs/UpdateEventDto.md
+docs/UpdateProducerDto.md
+git_push.sh
+index.ts
