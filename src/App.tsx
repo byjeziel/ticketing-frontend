@@ -10,6 +10,8 @@ import EventDetailsPage from "./pages/EventDetailsPage";
 import MyTicketsPage from "./pages/MyTicketsPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
 import TicketValidationPage from "./pages/TicketValidationPage";
+import PaymentStatus from "./pages/PaymentStatus";
+import TicketPurchase from "./components/TicketPurchase";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 function App() {
@@ -21,6 +23,15 @@ function App() {
         <Route path="/" element={<EventsPage />} />
         <Route path="/events" element={<EventsPage />} />
         <Route path="/events/:id" element={<EventDetailsPage />} />
+        <Route 
+          path="/events/:id/purchase" 
+          element={
+            <ProtectedRoute>
+              <TicketPurchase />
+            </ProtectedRoute>
+          } 
+        />
+        <Route path="/payment/:status" element={<PaymentStatus />} />
         <Route 
           path="/events/create" 
           element={

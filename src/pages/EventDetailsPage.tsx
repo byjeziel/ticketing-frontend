@@ -30,13 +30,12 @@ interface Event {
 
 export default function EventDetailsPage() {
   const { id } = useParams<{ id: string }>();
-  const { getAccessTokenSilently, isAuthenticated, loginWithRedirect } = useAuth0();
+  const { isAuthenticated, loginWithRedirect } = useAuth0();
   const navigate = useNavigate();
   
   const [event, setEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [bookingLoading, setBookingLoading] = useState(false);
   const [selectedSchedule, setSelectedSchedule] = useState<{ date: string; time: string } | null>(null);
   const [ticketQuantity, setTicketQuantity] = useState(1);
 
@@ -55,7 +54,7 @@ export default function EventDetailsPage() {
     }
   };
 
-  const handleBookTicket = async () => {
+  const handleBookTicket = () => {
     if (!isAuthenticated) {
       loginWithRedirect();
       return;
@@ -66,38 +65,12 @@ export default function EventDetailsPage() {
       return;
     }
 
-    setBookingLoading(true);
-    setError('');
-
-    try {
-      const token = await getAccessTokenSilently();
-      
-      const bookingData = {
-        eventId: event!._id,
-        eventDate: selectedSchedule.date,
-        eventTime: selectedSchedule.time,
-        quantity: ticketQuantity,
-        currency: event!.currency,
-      };
-
-      const response = await axios.post('http://localhost:3000/tickets', bookingData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      navigate('/my-tickets', { 
-        state: { 
-          success: true, 
-          bookingReference: response.data.bookingReference 
-        } 
-      });
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to book tickets');
-    } finally {
-      setBookingLoading(false);
-    }
+    navigate(`/events/${id}/purchase`, { 
+      state: { 
+        selectedSchedule,
+        ticketQuantity
+      } 
+    });
   };
 
   const getAvailableTickets = (scheduleItem: ScheduleItem) => {
@@ -258,10 +231,9 @@ export default function EventDetailsPage() {
 
               <button
                 onClick={handleBookTicket}
-                disabled={bookingLoading}
-                className="w-full md:w-auto px-6 py-3 bg-green-500 text-white rounded-md hover:bg-green-600 disabled:opacity-50"
+                className="w-full md:w-auto px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
               >
-                {bookingLoading ? 'Booking...' : 'Book Tickets'}
+                Purchase Tickets
               </button>
             </div>
           )}
