@@ -25,13 +25,15 @@ export default function EditProducerPage() {
   };
 
   return (
-    <div>
-      <h2>Editar Productor</h2>
-      {producer ? (
-        <ProducerForm initialData={producer} onSubmit={handleUpdate} />
-      ) : (
-        <p>Cargando...</p>
-      )}
+    <div className="max-w-lg mx-auto px-6 py-8">
+      <h2 className="text-2xl font-bold text-gray-900 mb-6">Editar Productor</h2>
+      <div className="bg-white rounded-lg shadow p-6">
+        {producer ? (
+          <ProducerForm initialData={producer} onSubmit={handleUpdate} />
+        ) : (
+          <p className="text-gray-500">Cargando...</p>
+        )}
+      </div>
     </div>
   );
 }

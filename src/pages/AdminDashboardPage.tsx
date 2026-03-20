@@ -73,8 +73,22 @@ export default function AdminDashboardPage() {
     }
   };
 
+  const handleRoleChange = async (userId: string, newRole: string) => {
+    try {
+      const token = await getAccessTokenSilently();
+      await axios.patch(
+        `http://localhost:3000/users/${userId}/role`,
+        { role: newRole },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      fetchUsers();
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to update role');
+    }
+  };
+
   const handleDeactivateUser = async (userId: string) => {
-    if (!window.confirm('Are you sure you want to deactivate this user?')) {
+    if (!window.confirm('¿Estás seguro de que querés desactivar este usuario?')) {
       return;
     }
 
@@ -93,12 +107,12 @@ export default function AdminDashboardPage() {
   };
 
   if (loading || loadingUsers) {
-    return <div className="max-w-6xl mx-auto p-6">Loading...</div>;
+    return <div className="px-6 py-6">Cargando...</div>;
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-6">Admin Dashboard</h1>
+    <div className="px-6 py-6">
+      <h1 className="text-3xl font-bold mb-6">Panel de Administración</h1>
 
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
@@ -108,23 +122,24 @@ export default function AdminDashboardPage() {
 
       <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold">User Management</h2>
+          <h2 className="text-xl font-semibold">Gestión de Usuarios</h2>
           <button
             onClick={() => setShowCreateForm(true)}
             className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
           >
-            Create New User
+            Crear Nuevo Usuario
           </button>
         </div>
 
         {showCreateForm && (
           <div className="border rounded-lg p-4 mb-6">
-            <h3 className="text-lg font-semibold mb-4">Create New User</h3>
+            <h3 className="text-lg font-semibold mb-4">Crear Nuevo Usuario</h3>
             <form onSubmit={handleCreateUser} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Auth0 ID *
+
                   </label>
                   <input
                     type="text"
@@ -137,7 +152,7 @@ export default function AdminDashboardPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Name *
+                    Nombre *
                   </label>
                   <input
                     type="text"
@@ -151,6 +166,7 @@ export default function AdminDashboardPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Email *
                   </label>
+
                   <input
                     type="email"
                     value={newUser.email}
@@ -161,16 +177,16 @@ export default function AdminDashboardPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Role *
+                    Rol *
                   </label>
                   <select
                     value={newUser.role}
                     onChange={(e) => setNewUser({...newUser, role: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="producer">Producer</option>
-                    <option value="admin">Admin</option>
-                    <option value="client">Client</option>
+                    <option value="producer">Productor</option>
+                    <option value="admin">Administrador</option>
+                    <option value="client">Cliente</option>
                   </select>
                 </div>
               </div>
@@ -180,13 +196,13 @@ export default function AdminDashboardPage() {
                   onClick={() => setShowCreateForm(false)}
                   className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
                 >
-                  Cancel
+                  Cancelar
                 </button>
                 <button
                   type="submit"
                   className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
                 >
-                  Create User
+                  Crear Usuario
                 </button>
               </div>
             </form>
@@ -198,22 +214,22 @@ export default function AdminDashboardPage() {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Name
+                  Nombre
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Email
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Role
+                  Rol
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
+                  Estado
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Created
+                  Creado
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
+                  Acciones
                 </th>
               </tr>
             </thead>
@@ -227,15 +243,15 @@ export default function AdminDashboardPage() {
                     {user.email}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      user.role === 'admin' 
-                        ? 'bg-purple-100 text-purple-800'
-                        : user.role === 'producer'
-                        ? 'bg-blue-100 text-blue-800'
-                        : 'bg-green-100 text-green-800'
-                    }`}>
-                      {user.role}
-                    </span>
+                    <select
+                      value={user.role}
+                      onChange={(e) => handleRoleChange(user._id, e.target.value)}
+                      className="text-xs border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    >
+                      <option value="client">Cliente</option>
+                      <option value="producer">Productor</option>
+                      <option value="admin">Administrador</option>
+                    </select>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
@@ -243,7 +259,7 @@ export default function AdminDashboardPage() {
                         ? 'bg-green-100 text-green-800'
                         : 'bg-red-100 text-red-800'
                     }`}>
-                      {user.isActive ? 'Active' : 'Inactive'}
+                      {user.isActive ? 'Activo' : 'Inactivo'}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -255,7 +271,7 @@ export default function AdminDashboardPage() {
                         onClick={() => handleDeactivateUser(user._id)}
                         className="text-red-600 hover:text-red-900"
                       >
-                        Deactivate
+                        Desactivar
                       </button>
                     )}
                   </td>

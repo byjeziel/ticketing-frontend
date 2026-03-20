@@ -19,7 +19,7 @@ export function useUserRole() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchUserProfile = async () => {
+    const syncUserProfile = async () => {
       if (!isAuthenticated || !user) {
         setUserProfile(null);
         setLoading(false);
@@ -28,20 +28,21 @@ export function useUserRole() {
 
       try {
         const token = await getAccessTokenSilently();
-        const response = await axios.get('http://localhost:3000/users/profile', {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        // POST /users/sync auto-creates the user on first login and returns their profile
+        const response = await axios.post(
+          'http://localhost:3000/users/sync',
+          { email: user.email, name: user.name },
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
         setUserProfile(response.data);
       } catch (err: any) {
-        setError(err.response?.data?.message || 'Failed to fetch user profile');
+        setError(err.response?.data?.message || 'Failed to sync user profile');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchUserProfile();
+    syncUserProfile();
   }, [isAuthenticated, getAccessTokenSilently, user]);
 
   const hasRole = (role: UserRole): boolean => {

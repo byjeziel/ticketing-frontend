@@ -15,3 +15,7 @@
 
 // Import commands.js using ES2015 syntax:
 import './commands'
+
+// Evitar que errores no capturados de Auth0 u otras libs externas
+// corten los tests de forma inesperada.
+Cypress.on('uncaught:exception', () => false);

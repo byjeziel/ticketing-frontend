@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth0 } from '@auth0/auth0-react';
+import { useUserRole } from '../hooks/useUserRole';
 
 interface ScheduleItem {
   date: string;
@@ -31,6 +32,7 @@ interface Event {
 export default function EventDetailsPage() {
   const { id } = useParams<{ id: string }>();
   const { isAuthenticated, loginWithRedirect } = useAuth0();
+  const { hasAnyRole } = useUserRole();
   const navigate = useNavigate();
   
   const [event, setEvent] = useState<Event | null>(null);
@@ -61,7 +63,7 @@ export default function EventDetailsPage() {
     }
 
     if (!selectedSchedule) {
-      setError('Please select a date and time');
+      setError('Por favor seleccioná una fecha y horario');
       return;
     }
 
@@ -78,12 +80,12 @@ export default function EventDetailsPage() {
   };
 
   if (loading) {
-    return <div className="max-w-4xl mx-auto p-6">Loading...</div>;
+    return <div className="max-w-6xl mx-auto p-6">Cargando...</div>;
   }
 
   if (error && !event) {
     return (
-      <div className="max-w-4xl mx-auto p-6">
+      <div className="max-w-6xl mx-auto p-6">
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
           {error}
         </div>
@@ -92,24 +94,35 @@ export default function EventDetailsPage() {
   }
 
   if (!event) {
-    return <div className="max-w-4xl mx-auto p-6">Event not found</div>;
+    return <div className="max-w-6xl mx-auto p-6">Evento no encontrado</div>;
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <button
-        onClick={() => navigate('/')}
-        className="mb-6 text-blue-500 hover:text-blue-700"
-      >
-        ← Back to Events
-      </button>
+    <div className="max-w-6xl mx-auto p-6">
+      <div className="flex justify-between items-center mb-6">
+        <button
+          onClick={() => navigate('/')}
+          className="text-blue-500 hover:text-blue-700"
+        >
+          ← Volver a Eventos
+        </button>
+        {hasAnyRole(['producer', 'admin']) && (
+          <button
+            onClick={() => navigate(`/events/edit/${id}`)}
+            className="px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600"
+          >
+            Editar Evento
+          </button>
+        )}
+      </div>
 
       <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-        <div className="relative h-64 md:h-96">
+        <div className="relative h-44 md:h-56 bg-gray-200">
           <img
             src={event.imageUrl}
             alt={event.title}
             className="w-full h-full object-cover"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
           />
         </div>
 
@@ -128,13 +141,13 @@ export default function EventDetailsPage() {
               <div className="text-2xl font-bold text-green-600">
                 {event.currency} {event.price}
               </div>
-              <div className="text-sm text-gray-600">per ticket</div>
+              <div className="text-sm text-gray-600">por entrada</div>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div>
-              <h3 className="font-semibold text-gray-900 mb-2">Venue</h3>
+              <h3 className="font-semibold text-gray-900 mb-2">Lugar</h3>
               <p className="text-gray-700">{event.venue}</p>
               <p className="text-gray-600">{event.address}</p>
               <p className="text-gray-600">{event.city}, {event.country}</p>
@@ -142,7 +155,7 @@ export default function EventDetailsPage() {
           </div>
 
           <div className="mb-6">
-            <h3 className="font-semibold text-gray-900 mb-2">About this event</h3>
+            <h3 className="font-semibold text-gray-900 mb-2">Sobre este evento</h3>
             <p className="text-gray-700 mb-4">{event.description}</p>
             <div 
               className="text-gray-700 prose max-w-none"
@@ -151,7 +164,7 @@ export default function EventDetailsPage() {
           </div>
 
           <div className="mb-6">
-            <h3 className="font-semibold text-gray-900 mb-4">Available Dates & Times</h3>
+            <h3 className="font-semibold text-gray-900 mb-4">Fechas y Horarios Disponibles</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {event.schedule.map((item, index) => {
                 const available = getAvailableTickets(item);
@@ -183,10 +196,10 @@ export default function EventDetailsPage() {
                       </div>
                       <div className="text-right">
                         <div className={`font-medium ${available < 10 ? 'text-red-600' : 'text-green-600'}`}>
-                          {available} tickets left
+                          {available} entradas disponibles
                         </div>
                         <div className="text-sm text-gray-600">
-                          of {item.tickets} total
+                          de {item.tickets} totales
                         </div>
                       </div>
                     </div>
@@ -200,7 +213,7 @@ export default function EventDetailsPage() {
             <div className="border-t pt-6">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h4 className="font-semibold">Selected Date & Time</h4>
+                  <h4 className="font-semibold">Fecha y Hora Seleccionada</h4>
                   <p className="text-gray-600">
                     {new Date(selectedSchedule.date).toLocaleDateString('en-US', {
                       weekday: 'long',
@@ -212,7 +225,7 @@ export default function EventDetailsPage() {
                 </div>
                 <div className="flex items-center space-x-4">
                   <label className="flex items-center space-x-2">
-                    <span>Quantity:</span>
+                    <span>Cantidad:</span>
                     <select
                       value={ticketQuantity}
                       onChange={(e) => setTicketQuantity(parseInt(e.target.value))}
@@ -226,14 +239,15 @@ export default function EventDetailsPage() {
                   <div className="text-xl font-bold">
                     Total: {event.currency} {(event.price * ticketQuantity).toFixed(2)}
                   </div>
+
                 </div>
               </div>
 
               <button
                 onClick={handleBookTicket}
-                className="w-full md:w-auto px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                className="w-full md:w-auto px-6 py-3 bg-black text-white rounded-md hover:bg-gray-800 transition-colors"
               >
-                Purchase Tickets
+                Comprar Entradas
               </button>
             </div>
           )}

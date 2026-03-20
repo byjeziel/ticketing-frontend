@@ -20,32 +20,46 @@ export default function ProducerForm({ onSubmit, initialData }: Props) {
   };
 
   return (
-    <form onSubmit={handleSubmit}>
-      <h2>{initialData ? "Editar Productor" : "Crear Productor"}</h2>
-      <input
-        type="text"
-        placeholder="Nombre"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        required
-      />
-      <br />
-      <input
-        type="email"
-        placeholder="Email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-      />
-      <br />
-      <input
-        type="tel"
-        placeholder="Teléfono"
-        value={phone}
-        onChange={(e) => setPhone(e.target.value)}
-      />
-      <br />
-      <br />
-      <button type="submit">{initialData ? "Guardar" : "Crear"}</button>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
+        <input
+          type="text"
+          placeholder="Nombre del productor"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          required
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+        <input
+          type="email"
+          placeholder="email@ejemplo.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
+        <input
+          type="tel"
+          placeholder="+54 11 1234-5678"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+      <div className="pt-2">
+        <button
+          type="submit"
+          className="w-full py-2 px-4 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 transition-colors"
+        >
+          {initialData ? "Guardar cambios" : "Crear productor"}
+        </button>
+      </div>
     </form>
   );
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 
 interface PaymentStatus {
   status: 'success' | 'failure' | 'pending';
@@ -8,21 +8,23 @@ interface PaymentStatus {
 }
 
 export default function PaymentStatus() {
+  // status comes from the path param: /payment/:status
+  const { status: pathStatus } = useParams<{ status: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [status, setStatus] = useState<PaymentStatus>({ status: 'pending' });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const paymentStatus = searchParams.get('status') as 'success' | 'failure' | 'pending';
+    const paymentStatus = (pathStatus as 'success' | 'failure' | 'pending') || 'pending';
     const reference = searchParams.get('reference');
-    
+
     setStatus({
-      status: paymentStatus || 'pending',
+      status: paymentStatus,
       reference: reference || undefined,
     });
     setLoading(false);
-  }, [searchParams]);
+  }, [pathStatus, searchParams]);
 
   const getStatusConfig = () => {
     switch (status.status) {
@@ -32,9 +34,9 @@ export default function PaymentStatus() {
           borderColor: 'border-green-200',
           textColor: 'text-green-800',
           iconColor: 'text-green-600',
-          title: 'Payment Successful!',
-          message: 'Your tickets have been confirmed. Check your email for the QR code.',
-          actionText: 'View My Tickets',
+          title: '¡Pago exitoso!',
+          message: 'Tus entradas fueron confirmadas. Revisá tu email para ver el código QR.',
+          actionText: 'Ver Mis Entradas',
           actionUrl: '/my-tickets',
         };
       case 'failure':
@@ -43,9 +45,9 @@ export default function PaymentStatus() {
           borderColor: 'border-red-200',
           textColor: 'text-red-800',
           iconColor: 'text-red-600',
-          title: 'Payment Failed',
-          message: 'Your payment could not be processed. Please try again.',
-          actionText: 'Try Again',
+          title: 'Pago fallido',
+          message: 'No se pudo procesar tu pago. Por favor intentá de nuevo.',
+          actionText: 'Intentar de nuevo',
           actionUrl: '/events',
         };
       case 'pending':
@@ -54,9 +56,9 @@ export default function PaymentStatus() {
           borderColor: 'border-yellow-200',
           textColor: 'text-yellow-800',
           iconColor: 'text-yellow-600',
-          title: 'Payment Pending',
-          message: 'Your payment is being processed. You will receive an email confirmation shortly.',
-          actionText: 'View Events',
+          title: 'Pago pendiente',
+          message: 'Tu pago está siendo procesado. Recibirás una confirmación por email en breve.',
+          actionText: 'Ver Eventos',
           actionUrl: '/events',
         };
       default:
@@ -65,9 +67,9 @@ export default function PaymentStatus() {
           borderColor: 'border-gray-200',
           textColor: 'text-gray-800',
           iconColor: 'text-gray-600',
-          title: 'Payment Status Unknown',
-          message: 'Please check your email for payment confirmation.',
-          actionText: 'View Events',
+          title: 'Estado de pago desconocido',
+          message: 'Revisá tu email para ver la confirmación de pago.',
+          actionText: 'Ver Eventos',
           actionUrl: '/events',
         };
     }
@@ -80,7 +82,7 @@ export default function PaymentStatus() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading payment status...</p>
+          <p className="text-gray-600">Cargando estado del pago...</p>
         </div>
       </div>
     );
@@ -120,7 +122,7 @@ export default function PaymentStatus() {
           {/* Reference */}
           {status.reference && (
             <div className="mb-6">
-              <span className="text-sm text-gray-600">Booking Reference: </span>
+              <span className="text-sm text-gray-600">Referencia de reserva: </span>
               <span className="font-mono font-medium">{status.reference}</span>
             </div>
           )}
@@ -137,7 +139,7 @@ export default function PaymentStatus() {
         {/* Additional Information */}
         <div className="mt-6 text-center">
           <p className="text-sm text-gray-600">
-            If you have any questions, please contact our support team.
+            Si tenés alguna consulta, contactá a nuestro equipo de soporte.
           </p>
         </div>
       </div>

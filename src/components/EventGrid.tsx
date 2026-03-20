@@ -66,12 +66,12 @@ export default function EventGrid() {
   const categories = [...new Set(events.map(event => event.category))];
 
   if (loading) {
-    return <div className="max-w-6xl mx-auto p-6">Loading events...</div>;
+    return <div className="px-6 py-6">Cargando eventos...</div>;
   }
 
   if (error) {
     return (
-      <div className="max-w-6xl mx-auto p-6">
+      <div className="px-6 py-6">
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
           {error}
         </div>
@@ -80,17 +80,17 @@ export default function EventGrid() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
+    <div className="px-6 py-6">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Upcoming Events</h1>
+        <h1 className="text-3xl font-bold text-gray-900">Próximos Eventos</h1>
         <div className="flex items-center space-x-4">
-          <label className="text-sm font-medium text-gray-700">Filter by category:</label>
+          <label className="text-sm font-medium text-gray-700">Filtrar por categoría:</label>
           <select
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="all">All Categories</option>
+            <option value="all">Todas las categorías</option>
             {categories.map(category => (
               <option key={category} value={category}>{category}</option>
             ))}
@@ -100,7 +100,7 @@ export default function EventGrid() {
 
       {filteredEvents.length === 0 ? (
         <div className="text-center py-12">
-          <div className="text-gray-500 text-lg">No events found.</div>
+          <div className="text-gray-500 text-lg">No se encontraron eventos.</div>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -114,11 +114,12 @@ export default function EventGrid() {
                 className="bg-white rounded-lg shadow-lg overflow-hidden cursor-pointer transform transition-transform hover:scale-105"
                 onClick={() => navigate(`/events/${event._id}`)}
               >
-                <div className="relative h-48">
+                <div className="relative h-32 bg-gray-200">
                   <img
                     src={event.imageUrl}
                     alt={event.title}
                     className="w-full h-full object-cover"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                   />
                   <div className="absolute top-2 right-2">
                     <span className="bg-blue-500 text-white px-2 py-1 rounded text-xs">
@@ -145,10 +146,10 @@ export default function EventGrid() {
                         <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
-                        {new Date(nextDate.date).toLocaleDateString('en-US', {
+                        {new Date(nextDate.date).toLocaleDateString('es-AR', {
                           month: 'short',
                           day: 'numeric'
-                        })} at {nextDate.time}
+                        })} a las {nextDate.time}
                       </div>
                     )}
                   </div>
@@ -164,7 +165,7 @@ export default function EventGrid() {
                     <div className={`text-sm font-medium ${
                       available < 10 ? 'text-red-600' : 'text-green-600'
                     }`}>
-                      {available} left
+                      {available} disponibles
                     </div>
                   </div>
                 </div>

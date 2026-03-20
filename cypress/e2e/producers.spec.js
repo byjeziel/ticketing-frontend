@@ -1,63 +1,44 @@
-describe('Producers - create & edit flows', () => {
-  // Puerto donde corre la API mockeada
+/**
+ * Producers — Verificación de protección de rutas y visibilidad de botones
+ *
+ * Confirma que:
+ *   1. La ruta /producers/create está protegida (redirige a Auth0 sin sesión)
+ *   2. Los botones Editar/Eliminar están ocultos para usuarios no autenticados
+ *
+ * Estos tests validan el comportamiento de seguridad implementado en:
+ *   - App.tsx (ProtectedRoute en /producers/edit/:id)
+ *   - ProducersPage.tsx (visibilidad condicional de botones según rol)
+ */
+
+describe('Producers - protección de rutas y visibilidad', () => {
   const apiBase = 'http://localhost:3000/producers';
 
-  it('creates a producer', () => {
-    const newProducer = { _id: 'p1', name: 'Test Producer', email: 'test@example.com', phone: '123456' };
-
-    //Mock de Post y Get
-    cy.intercept('POST', apiBase, { statusCode: 201, body: newProducer }).as('postProducer');
-
-    cy.intercept('GET', apiBase, { statusCode: 200, body: [newProducer] }).as('getProducersAfterCreate');
-
-    //Visita la ruta de creacion
-    cy.visit('/producers/create');
-    
-    //Rellena el formulario
-    cy.get('input[placeholder="Nombre"]').should('exist').type(newProducer.name);
-    cy.get('input[placeholder="Email"]').type(newProducer.email);
-    cy.get('input[placeholder="Teléfono"]').type(newProducer.phone);
-
-    //Envia el formulario
-    cy.contains('button', 'Crear').click();
-
-    //Verfica que redirige a /producers y muestra el nuevo productor
-    cy.url().should('include', '/producers');
-    cy.contains(newProducer.name).should('exist');
+  beforeEach(() => {
+    cy.on('uncaught:exception', () => false);
   });
 
-  it('edits an existing producer and shows updated name', () => {
-    const original = { _id: 'p2', name: 'Orig Name', email: 'orig@example.com', phone: '111' };
-    const updated = { ...original, name: 'Updated Name' };
+  it('redirige a Auth0 al intentar acceder a /producers/create sin autenticación', () => {
+    cy.visit('/producers/create');
 
-    // Retorno del productor original
-    cy.intercept('GET', apiBase, { statusCode: 200, body: [original] }).as('getProducers');
+    // ProtectedRoute llama loginWithRedirect() → la URL deja de ser /producers/create.
+    // cy.url() devuelve '' cuando la app navegó a un origen cross-origin (auth0.com),
+    // lo cual NO incluye 'producers/create'. Ambos casos confirman que la ruta está protegida.
+    cy.url().should('not.include', 'producers/create');
+  });
 
-    // Visita la lista de productores
+  it('oculta los botones Editar y Eliminar a usuarios no autenticados', () => {
+    const producer = { _id: 'p1', name: 'Test Producer', email: 'test@example.com', phone: '123456' };
+
+    cy.intercept('GET', apiBase, { statusCode: 200, body: [producer] }).as('getProducers');
+
     cy.visit('/producers');
+    cy.wait('@getProducers');
 
-    // Verifica que el productor original exista en la lista
-    cy.contains(original.name).should('exist');
+    // El nombre se muestra (GET /producers es público)
+    cy.contains(producer.name).should('exist');
 
-    cy.intercept('GET', `${apiBase}/${original._id}`, { statusCode: 200, body: original }).as('getById');
-
-    cy.contains('button', 'Editar').click();
-
-    // Se fija que tenga los datos originales
-    cy.get('input[placeholder="Nombre"]').should('have.value', original.name);
-
-    // Hace un cambio
-    cy.get('input[placeholder="Nombre"]').clear().type(updated.name);
-
-    // Mock de PATCH y GET luego de la actualizacion
-    cy.intercept('PATCH', `${apiBase}/${original._id}`, { statusCode: 200, body: updated }).as('patchProducer');
-    cy.intercept('GET', apiBase, { statusCode: 200, body: [updated] }).as('getProducersAfterUpdate');
-
-    // Guarda los cambios
-    cy.contains('button', 'Guardar').click();
-
-    // Vuelve a la lista y verifica el cambio
-    cy.url().should('include', '/producers');
-    cy.contains(updated.name).should('exist');
+    // Los botones de acción NO son visibles para usuarios sin rol admin
+    cy.contains('button', 'Editar').should('not.exist');
+    cy.contains('button', 'Eliminar').should('not.exist');
   });
 });

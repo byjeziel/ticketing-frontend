@@ -12,9 +12,11 @@ export default function CreateProducerPage() {
   };
 
   return (
-    <div>
-      <h2>Crear Productor</h2>
-      <ProducerForm onSubmit={handleCreate} />
+    <div className="max-w-lg mx-auto px-6 py-8">
+      <h2 className="text-2xl font-bold text-gray-900 mb-6">Crear Productor</h2>
+      <div className="bg-white rounded-lg shadow p-6">
+        <ProducerForm onSubmit={handleCreate} />
+      </div>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
+import { useAuth0 } from '@auth0/auth0-react';
 
 interface ScheduleItem {
   date: string;
@@ -33,15 +34,13 @@ interface TicketPurchaseData {
   currency: string;
 }
 
-declare global {
-  interface Window {
-    MercadoPago: any;
-  }
-}
-
 export default function TicketPurchase() {
-  const { eventId } = useParams<{ eventId: string }>();
+  // Route param is :id (not :eventId) — see App.tsx path="/events/:id/purchase"
+  const { id: eventId } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const { getAccessTokenSilently, user } = useAuth0();
+
   const [event, setEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -55,19 +54,22 @@ export default function TicketPurchase() {
     if (eventId) {
       fetchEvent(eventId);
     }
-    // Load MercadoPago SDK
-    const script = document.createElement('script');
-    script.src = 'https://sdk.mercadopago.com/js/v2';
-    script.onload = () => {
-      const mp = new window.MercadoPago('APP_USR-912123be-7acd-4dca-996c-3b640a82473f');
-      window.MercadoPago = mp;
-    };
-    document.body.appendChild(script);
-
-    return () => {
-      document.body.removeChild(script);
-    };
+    // Pre-populate from EventDetailsPage state
+    const state = location.state as { selectedSchedule?: { date: string; time: string }; ticketQuantity?: number } | null;
+    if (state?.selectedSchedule) {
+      setSelectedDate(state.selectedSchedule.date);
+      setSelectedTime(state.selectedSchedule.time);
+    }
+    if (state?.ticketQuantity) {
+      setQuantity(state.ticketQuantity);
+    }
   }, [eventId]);
+
+  useEffect(() => {
+    if (user?.email) {
+      setCustomerEmail(user.email);
+    }
+  }, [user]);
 
   const fetchEvent = async (id: string) => {
     try {
@@ -100,6 +102,7 @@ export default function TicketPurchase() {
     setError('');
 
     try {
+      const token = await getAccessTokenSilently();
       const purchaseData: TicketPurchaseData = {
         eventId: event._id,
         eventDate: selectedDate,
@@ -110,16 +113,18 @@ export default function TicketPurchase() {
       };
 
       const response = await axios.post('http://localhost:3000/tickets', purchaseData, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       const { paymentPreference } = response.data;
 
-      // Redirect to MercadoPago checkout
-      if (window.MercadoPago && paymentPreference.initPoint) {
-        window.location.href = paymentPreference.initPoint;
+      // sandboxInitPoint in dev, initPoint in production
+      const checkoutUrl = import.meta.env.DEV
+        ? paymentPreference.sandboxInitPoint
+        : paymentPreference.initPoint;
+
+      if (checkoutUrl) {
+        window.location.href = checkoutUrl;
       } else {
         setError('Payment initialization failed');
       }
@@ -131,12 +136,12 @@ export default function TicketPurchase() {
   };
 
   if (loading) {
-    return <div className="max-w-4xl mx-auto p-6">Loading event details...</div>;
+    return <div className="max-w-6xl mx-auto p-6">Cargando detalles del evento...</div>;
   }
 
   if (error && !event) {
     return (
-      <div className="max-w-4xl mx-auto p-6">
+      <div className="max-w-6xl mx-auto p-6">
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
           {error}
         </div>
@@ -145,7 +150,7 @@ export default function TicketPurchase() {
   }
 
   if (!event) {
-    return <div className="max-w-4xl mx-auto p-6">Event not found</div>;
+    return <div className="max-w-6xl mx-auto p-6">Evento no encontrado</div>;
   }
 
   const nextDates = getNextEventDates(event.schedule);
@@ -156,7 +161,7 @@ export default function TicketPurchase() {
   const totalPrice = event.price * quantity;
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
+    <div className="max-w-6xl mx-auto p-6">
       <div className="bg-white rounded-lg shadow-lg overflow-hidden">
         <div className="relative h-64">
           <img
@@ -175,7 +180,7 @@ export default function TicketPurchase() {
           <div className="grid md:grid-cols-2 gap-8">
             {/* Event Details */}
             <div>
-              <h2 className="text-2xl font-bold mb-4">Event Details</h2>
+              <h2 className="text-2xl font-bold mb-4">Detalles del Evento</h2>
               
               <div className="space-y-3 mb-6">
                 <div className="flex items-center text-gray-600">
@@ -197,13 +202,13 @@ export default function TicketPurchase() {
               <p className="text-gray-700 mb-6">{event.description}</p>
 
               <div className="text-3xl font-bold text-green-600 mb-6">
-                {event.currency} {event.price} per ticket
+                {event.currency} {event.price} por entrada
               </div>
             </div>
 
             {/* Purchase Form */}
             <div>
-              <h2 className="text-2xl font-bold mb-4">Purchase Tickets</h2>
+              <h2 className="text-2xl font-bold mb-4">Comprar Entradas</h2>
               
               {error && (
                 <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
@@ -214,7 +219,7 @@ export default function TicketPurchase() {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Select Date
+                    Seleccionar Fecha
                   </label>
                   <select
                     value={selectedDate}
@@ -224,7 +229,7 @@ export default function TicketPurchase() {
                     }}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="">Select a date</option>
+                    <option value="">Seleccioná una fecha</option>
                     {nextDates.map((item, index) => (
                       <option key={index} value={item.date}>
                         {new Date(item.date).toLocaleDateString('en-US', {
@@ -241,14 +246,14 @@ export default function TicketPurchase() {
                 {selectedDate && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Select Time
+                      Seleccionar Horario
                     </label>
                     <select
                       value={selectedTime}
                       onChange={(e) => setSelectedTime(e.target.value)}
                       className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
-                      <option value="">Select a time</option>
+                      <option value="">Seleccioná un horario</option>
                       {event.schedule
                         .filter(item => item.date === selectedDate)
                         .map((item, index) => {
@@ -259,7 +264,7 @@ export default function TicketPurchase() {
                               value={item.time}
                               disabled={available === 0}
                             >
-                              {item.time} ({available} tickets available)
+                              {item.time} ({available} entradas disponibles)
                             </option>
                           );
                         })}
@@ -269,7 +274,7 @@ export default function TicketPurchase() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Quantity
+                    Cantidad
                   </label>
                   <input
                     type="number"
@@ -283,7 +288,7 @@ export default function TicketPurchase() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Email Address
+                    Correo Electrónico
                   </label>
                   <input
                     type="email"
@@ -306,9 +311,9 @@ export default function TicketPurchase() {
                   <button
                     onClick={handlePurchase}
                     disabled={processing || !selectedDate || !selectedTime || !customerEmail || availableTickets === 0}
-                    className="w-full bg-blue-600 text-white py-3 px-4 rounded-md font-medium hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                    className="w-full bg-black text-white py-3 px-4 rounded-md font-medium hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                   >
-                    {processing ? 'Processing...' : 'Proceed to Payment'}
+                    {processing ? 'Procesando...' : 'Proceder al Pago'}
                   </button>
                 </div>
               </div>
