@@ -79,7 +79,7 @@ export default function CreateEventPage() {
 
       navigate('/events');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to create event');
+      setError(err.response?.data?.message || 'Error al crear el evento');
     } finally {
       setLoading(false);
     }
@@ -87,7 +87,7 @@ export default function CreateEventPage() {
 
   return (
     <div className="max-w-6xl mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-6">Create New Event</h1>
+      <h1 className="text-3xl font-bold mb-6">Crear Nuevo Evento</h1>
       
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
@@ -99,7 +99,7 @@ export default function CreateEventPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Event Title *
+              Título del Evento *
             </label>
             <input
               type="text"
@@ -113,7 +113,7 @@ export default function CreateEventPage() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Category *
+              Categoría *
             </label>
             <input
               type="text"
@@ -127,7 +127,7 @@ export default function CreateEventPage() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Venue *
+              Lugar *
             </label>
             <input
               type="text"
@@ -141,7 +141,7 @@ export default function CreateEventPage() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              City *
+              Ciudad *
             </label>
             <input
               type="text"
@@ -155,7 +155,7 @@ export default function CreateEventPage() {
 
           <div className="md:col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Address *
+              Dirección *
             </label>
             <input
               type="text"
@@ -169,7 +169,7 @@ export default function CreateEventPage() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Country *
+              País *
             </label>
             <input
               type="text"
@@ -183,7 +183,7 @@ export default function CreateEventPage() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Price *
+              Precio *
             </label>
             <input
               type="number"
@@ -199,7 +199,7 @@ export default function CreateEventPage() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Currency *
+              Moneda *
             </label>
             <select
               name="currency"
@@ -216,7 +216,7 @@ export default function CreateEventPage() {
 
           <div className="md:col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Image URL
+              URL de Imagen
             </label>
             <input
               type="url"
@@ -230,7 +230,7 @@ export default function CreateEventPage() {
 
           <div className="md:col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Short Description *
+              Descripción Corta *
             </label>
             <textarea
               name="description"
@@ -244,23 +244,23 @@ export default function CreateEventPage() {
 
           <div className="md:col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Rich Description *
+              Descripción Detallada *
             </label>
             <RichTextEditor
               value={formData.richDescription}
               onChange={(html) => setFormData(prev => ({ ...prev, richDescription: html }))}
-              placeholder="Write a detailed description of the event..."
+              placeholder="Escribí una descripción detallada del evento..."
             />
           </div>
         </div>
 
         <div>
-          <h3 className="text-lg font-semibold mb-4">Event Schedule</h3>
+          <h3 className="text-lg font-semibold mb-4">Fechas y Horarios</h3>
           {schedule.map((item, index) => (
             <div key={index} className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Date *
+                  Fecha *
                 </label>
                 <input
                   type="date"
@@ -272,7 +272,7 @@ export default function CreateEventPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Time *
+                  Horario *
                 </label>
                 <input
                   type="time"
@@ -284,7 +284,7 @@ export default function CreateEventPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Available Tickets *
+                  Entradas Disponibles *
                 </label>
                 <input
                   type="number"
@@ -302,7 +302,7 @@ export default function CreateEventPage() {
                     onClick={() => removeScheduleItem(index)}
                     className="px-3 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
                   >
-                    Remove
+                    Eliminar
                   </button>
                 )}
               </div>
@@ -313,7 +313,7 @@ export default function CreateEventPage() {
             onClick={addScheduleItem}
             className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
           >
-            Add Date/Time
+            Agregar Fecha/Horario
           </button>
         </div>
 
@@ -323,14 +323,14 @@ export default function CreateEventPage() {
             onClick={() => navigate('/events')}
             className="px-6 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
           >
-            Cancel
+            Cancelar
           </button>
           <button
             type="submit"
             disabled={loading}
             className="px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50"
           >
-            {loading ? 'Creating...' : 'Create Event'}
+            {loading ? 'Creando...' : 'Crear Evento'}
           </button>
         </div>
       </form>

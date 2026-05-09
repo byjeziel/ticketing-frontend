@@ -185,7 +185,7 @@ export default function EventDetailsPage() {
                     <div className="flex justify-between items-center">
                       <div>
                         <div className="font-medium">
-                          {new Date(item.date).toLocaleDateString('en-US', {
+                          {new Date(item.date).toLocaleDateString('es-AR', {
                             weekday: 'long',
                             year: 'numeric',
                             month: 'long',
@@ -215,12 +215,12 @@ export default function EventDetailsPage() {
                 <div>
                   <h4 className="font-semibold">Fecha y Hora Seleccionada</h4>
                   <p className="text-gray-600">
-                    {new Date(selectedSchedule.date).toLocaleDateString('en-US', {
+                    {new Date(selectedSchedule.date).toLocaleDateString('es-AR', {
                       weekday: 'long',
                       year: 'numeric',
                       month: 'long',
                       day: 'numeric'
-                    })} at {selectedSchedule.time}
+                    })} a las {selectedSchedule.time}
                   </p>
                 </div>
                 <div className="flex items-center space-x-4">

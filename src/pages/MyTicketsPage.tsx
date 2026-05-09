@@ -216,7 +216,7 @@ export default function MyTicketsPage() {
                     <div>
                       <div className="text-sm text-gray-600">Fecha</div>
                       <div className="font-medium">
-                        {new Date(ticket.eventDate).toLocaleDateString('en-US', {
+                        {new Date(ticket.eventDate).toLocaleDateString('es-AR', {
                           weekday: 'short',
                           month: 'short',
                           day: 'numeric'

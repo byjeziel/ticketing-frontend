@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth0 } from '@auth0/auth0-react';
 
@@ -35,10 +35,9 @@ interface TicketPurchaseData {
 }
 
 export default function TicketPurchase() {
-  // Route param is :id (not :eventId) — see App.tsx path="/events/:id/purchase"
   const { id: eventId } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const location = useLocation();
+  const navigate = useNavigate();
   const { getAccessTokenSilently, user } = useAuth0();
 
   const [event, setEvent] = useState<Event | null>(null);
@@ -50,51 +49,64 @@ export default function TicketPurchase() {
   const [customerEmail, setCustomerEmail] = useState('');
   const [processing, setProcessing] = useState(false);
 
+  // Estado de espera de pago
+  const [waitingForPayment, setWaitingForPayment] = useState(false);
+  const [bookingReference, setBookingReference] = useState('');
+  const [confirmingManually, setConfirmingManually] = useState(false);
+  const pollingRef = useRef<number | null>(null);
+
   useEffect(() => {
-    if (eventId) {
-      fetchEvent(eventId);
-    }
-    // Pre-populate from EventDetailsPage state
+    if (eventId) fetchEvent(eventId);
     const state = location.state as { selectedSchedule?: { date: string; time: string }; ticketQuantity?: number } | null;
     if (state?.selectedSchedule) {
       setSelectedDate(state.selectedSchedule.date);
       setSelectedTime(state.selectedSchedule.time);
     }
-    if (state?.ticketQuantity) {
-      setQuantity(state.ticketQuantity);
-    }
+    if (state?.ticketQuantity) setQuantity(state.ticketQuantity);
   }, [eventId]);
 
   useEffect(() => {
-    if (user?.email) {
-      setCustomerEmail(user.email);
-    }
+    if (user?.email) setCustomerEmail(user.email);
   }, [user]);
+
+  // Limpieza del polling al desmontar
+  useEffect(() => {
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
+  }, []);
 
   const fetchEvent = async (id: string) => {
     try {
       const response = await axios.get(`http://localhost:3000/events/${id}`);
       setEvent(response.data);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to fetch event');
+      setError(err.response?.data?.message || 'Error al cargar el evento');
     } finally {
       setLoading(false);
     }
   };
 
-  const getAvailableTickets = (scheduleItem: ScheduleItem) => {
-    return scheduleItem.tickets - scheduleItem.ticketsSold;
-  };
-
-  const getNextEventDates = (schedule: ScheduleItem[]) => {
-    return schedule
-      .filter(item => new Date(item.date) >= new Date())
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  const startPolling = (ref: string) => {
+    pollingRef.current = window.setInterval(async () => {
+      try {
+        const token = await getAccessTokenSilently();
+        const res = await axios.get(`http://localhost:3000/tickets/reference/${ref}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.data?.status === 'confirmed') {
+          clearInterval(pollingRef.current!);
+          navigate('/my-tickets');
+        }
+      } catch {
+        // ignorar errores de polling
+      }
+    }, 3000);
   };
 
   const handlePurchase = async () => {
     if (!event || !selectedDate || !selectedTime || !customerEmail) {
-      setError('Please fill all fields');
+      setError('Por favor completá todos los campos');
       return;
     }
 
@@ -116,23 +128,49 @@ export default function TicketPurchase() {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      const { paymentPreference } = response.data;
+      const { ticket, paymentPreference } = response.data;
+      setBookingReference(ticket.bookingReference);
 
-      // sandboxInitPoint in dev, initPoint in production
       const checkoutUrl = import.meta.env.DEV
         ? paymentPreference.sandboxInitPoint
         : paymentPreference.initPoint;
 
       if (checkoutUrl) {
-        window.location.href = checkoutUrl;
+        window.open(checkoutUrl, '_blank');
+        setWaitingForPayment(true);
+        startPolling(ticket.bookingReference);
       } else {
-        setError('Payment initialization failed');
+        setError('No se pudo inicializar el pago');
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Purchase failed');
+      setError(err.response?.data?.message || 'Error al procesar la compra');
     } finally {
       setProcessing(false);
     }
+  };
+
+  const handleManualConfirm = async () => {
+    setConfirmingManually(true);
+    try {
+      const token = await getAccessTokenSilently();
+      await axios.patch(
+        'http://localhost:3000/tickets/dev/confirm-pending',
+        {},
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      // El polling va a detectar el cambio y navegar automáticamente
+    } catch {
+      setError('Error al confirmar el pago');
+      setConfirmingManually(false);
+    }
+  };
+
+  const getAvailableTickets = (scheduleItem: ScheduleItem) => {
+    return scheduleItem.tickets - scheduleItem.ticketsSold;
+  };
+
+  const getNextEventDates = (schedule: ScheduleItem[]) => {
+    return schedule.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   };
 
   if (loading) {
@@ -142,15 +180,41 @@ export default function TicketPurchase() {
   if (error && !event) {
     return (
       <div className="max-w-6xl mx-auto p-6">
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-          {error}
-        </div>
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">{error}</div>
       </div>
     );
   }
 
   if (!event) {
     return <div className="max-w-6xl mx-auto p-6">Evento no encontrado</div>;
+  }
+
+  // Pantalla de espera de pago
+  if (waitingForPayment) {
+    return (
+      <div className="max-w-lg mx-auto p-6 text-center">
+        <div className="bg-white rounded-lg shadow-lg p-8">
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-gray-200 border-t-gray-900 mx-auto mb-6"></div>
+          <h2 className="text-2xl font-bold mb-3">Esperando confirmación de pago</h2>
+          <p className="text-gray-600 mb-2">
+            Completá el pago en la ventana de MercadoPago que se abrió.
+          </p>
+          <p className="text-sm text-gray-500 mb-8">
+            Referencia: <span className="font-mono font-medium">{bookingReference}</span>
+          </p>
+          <button
+            onClick={handleManualConfirm}
+            disabled={confirmingManually}
+            className="w-full bg-gray-900 text-white py-3 px-4 rounded-md font-medium hover:bg-gray-800 disabled:opacity-50 transition-colors mb-3"
+          >
+            {confirmingManually ? 'Confirmando...' : 'Ya pagué'}
+          </button>
+          <p className="text-xs text-gray-400">
+            Al confirmar, recibirás un email con tu código QR para verificar.
+          </p>
+        </div>
+      </div>
+    );
   }
 
   const nextDates = getNextEventDates(event.schedule);
@@ -164,24 +228,17 @@ export default function TicketPurchase() {
     <div className="max-w-6xl mx-auto p-6">
       <div className="bg-white rounded-lg shadow-lg overflow-hidden">
         <div className="relative h-64">
-          <img
-            src={event.imageUrl}
-            alt={event.title}
-            className="w-full h-full object-cover"
-          />
+          <img src={event.imageUrl} alt={event.title} className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center">
-            <h1 className="text-4xl font-bold text-white text-center px-4">
-              {event.title}
-            </h1>
+            <h1 className="text-4xl font-bold text-white text-center px-4">{event.title}</h1>
           </div>
         </div>
 
         <div className="p-6">
           <div className="grid md:grid-cols-2 gap-8">
-            {/* Event Details */}
+            {/* Detalles del evento */}
             <div>
               <h2 className="text-2xl font-bold mb-4">Detalles del Evento</h2>
-              
               <div className="space-y-3 mb-6">
                 <div className="flex items-center text-gray-600">
                   <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -190,7 +247,6 @@ export default function TicketPurchase() {
                   </svg>
                   {event.venue}, {event.city}, {event.country}
                 </div>
-                
                 <div className="flex items-center text-gray-600">
                   <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
@@ -198,18 +254,16 @@ export default function TicketPurchase() {
                   {event.category}
                 </div>
               </div>
-
               <p className="text-gray-700 mb-6">{event.description}</p>
-
               <div className="text-3xl font-bold text-green-600 mb-6">
                 {event.currency} {event.price} por entrada
               </div>
             </div>
 
-            {/* Purchase Form */}
+            {/* Formulario de compra */}
             <div>
               <h2 className="text-2xl font-bold mb-4">Comprar Entradas</h2>
-              
+
               {error && (
                 <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
                   {error}
@@ -218,25 +272,17 @@ export default function TicketPurchase() {
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Seleccionar Fecha
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Seleccionar Fecha</label>
                   <select
                     value={selectedDate}
-                    onChange={(e) => {
-                      setSelectedDate(e.target.value);
-                      setSelectedTime('');
-                    }}
+                    onChange={(e) => { setSelectedDate(e.target.value); setSelectedTime(''); }}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">Seleccioná una fecha</option>
                     {nextDates.map((item, index) => (
                       <option key={index} value={item.date}>
-                        {new Date(item.date).toLocaleDateString('en-US', {
-                          weekday: 'long',
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric'
+                        {new Date(item.date).toLocaleDateString('es-AR', {
+                          weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
                         })}
                       </option>
                     ))}
@@ -245,9 +291,7 @@ export default function TicketPurchase() {
 
                 {selectedDate && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Seleccionar Horario
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Seleccionar Horario</label>
                     <select
                       value={selectedTime}
                       onChange={(e) => setSelectedTime(e.target.value)}
@@ -259,11 +303,7 @@ export default function TicketPurchase() {
                         .map((item, index) => {
                           const available = getAvailableTickets(item);
                           return (
-                            <option 
-                              key={index} 
-                              value={item.time}
-                              disabled={available === 0}
-                            >
+                            <option key={index} value={item.time} disabled={available === 0}>
                               {item.time} ({available} entradas disponibles)
                             </option>
                           );
@@ -273,9 +313,7 @@ export default function TicketPurchase() {
                 )}
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Cantidad
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Cantidad</label>
                   <input
                     type="number"
                     min="1"
@@ -287,14 +325,12 @@ export default function TicketPurchase() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Correo Electrónico
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Correo Electrónico</label>
                   <input
                     type="email"
                     value={customerEmail}
                     onChange={(e) => setCustomerEmail(e.target.value)}
-                    placeholder="your@email.com"
+                    placeholder="tu@email.com"
                     className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
                   />
@@ -307,11 +343,10 @@ export default function TicketPurchase() {
                       {event.currency} {totalPrice}
                     </span>
                   </div>
-
                   <button
                     onClick={handlePurchase}
                     disabled={processing || !selectedDate || !selectedTime || !customerEmail || availableTickets === 0}
-                    className="w-full bg-black text-white py-3 px-4 rounded-md font-medium hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                    className="w-full bg-gray-900 text-white py-3 px-4 rounded-md font-medium hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                   >
                     {processing ? 'Procesando...' : 'Proceder al Pago'}
                   </button>
